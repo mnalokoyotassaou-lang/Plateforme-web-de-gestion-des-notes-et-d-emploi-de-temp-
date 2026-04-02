@@ -1,0 +1,12 @@
+<h2>🗑️ Confirmation de Suppression</h2>
+
+<p>Êtes-vous sûr de vouloir supprimer la matière suivante : <strong>{{ object.nom_matiere }} ({{ object.code_matiere }})</strong> ?</p>
+<p>
+    **ATTENTION :** Cela supprimera également tous les enregistrements de **notes** et les relations **professeurs** associés à cette matière !
+</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" style="background-color: red; color: white; padding: 10px;">Confirmer la suppression</button>
+    <a href="{% url 'matiere_list' %}" style="margin-left: 20px;">Annuler</a>
+</form>

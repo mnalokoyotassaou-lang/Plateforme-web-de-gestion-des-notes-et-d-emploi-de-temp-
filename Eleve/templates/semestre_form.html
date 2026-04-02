@@ -1,0 +1,14 @@
+<h2>
+    {% if form.instance.pk %}
+        Modifier l'option : {{ form.instance.nom_option }}
+    {% else %}
+        
+    {% endif %}
+</h2>
+
+<form method="post" action="{% url 'semestre_create' %}">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Sauvegarder</button>
+</form>
+<p><a href="{% url 'semestre_list' %}">Retour à la liste</a></p>

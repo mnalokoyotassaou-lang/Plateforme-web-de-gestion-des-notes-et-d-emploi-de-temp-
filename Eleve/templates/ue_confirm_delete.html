@@ -1,0 +1,9 @@
+<h2>🗑️ Confirmation de Suppression</h2>
+
+<p>Êtes-vous sûr de vouloir supprimer l'Unité d'Enseignement (UE) suivante : <strong>{{ object.nom }} ({{ object.cod_ue }})</strong> ?</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" style="background-color: red; color: white; padding: 10px;">Confirmer la suppression</button>
+    <a href="{% url 'ue_list' %}" style="margin-left: 20px;">Annuler</a>
+</form>

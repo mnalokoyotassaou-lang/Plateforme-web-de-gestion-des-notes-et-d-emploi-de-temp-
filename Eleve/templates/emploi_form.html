@@ -1,0 +1,15 @@
+<h2>
+    {% if form.instance.pk %}
+        ✏️ Modifier seance : {{ form.instance.Date }}
+    {% else %}
+        
+    {% endif %}
+</h2>
+
+<form method="post" action="{% url 'emploi_create' %}">
+    {% csrf_token %}
+    {{ form.as_p }} 
+    <button type="submit">Sauvegarder</button>
+</form>
+
+<p><a href="{% url 'emploi_list' %}">Retour à la liste de l'Emploi du Temps</a></p>

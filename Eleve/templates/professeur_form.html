@@ -1,0 +1,15 @@
+<h2>
+    {% if form.instance.pk %}
+        ✏️ Modifier le Professeur : {{ form.instance }}
+    {% else %}
+        ➕ Ajouter un nouveau Professeur
+    {% endif %}
+</h2>
+
+<form method="post" action="{% url 'professeur_create' %}">
+    {% csrf_token %}
+    {{ form.as_p }} 
+    <button type="submit">Sauvegarder</button>
+</form>
+
+<p><a href="{% url 'professeur_list' %}">Retour à la liste des professeurs</a></p>

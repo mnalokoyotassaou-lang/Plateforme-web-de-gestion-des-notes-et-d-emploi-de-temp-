@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}Mes Notes{% endblock %}
+
+{% block content %}
+    
+    <style>
+        /* Style standardisé pour la cohérence */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        tr:hover { background-color: #f5f5f5; }
+        .btn { text-decoration: none; padding: 5px 10px; border-radius: 4px; color: white; margin-right: 5px; font-size: 0.9em;}
+        .btn-edit { background-color: #4CAF50; }
+        .btn-delete { background-color: #f44336; }
+        .btn-add { 
+            display: inline-block; background-color: #008CBA; color: white; 
+            padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-bottom: 15px;
+            cursor: pointer;
+        }
+        /* Style pour les messages */
+        .alert-success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; padding: .75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: .25rem; }
+
+        /* Styles spécifiques pour le formulaire de recherche/saisie */
+        .matricule-form-container {
+            padding: 22px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .matricule-input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 70%;
+            margin-right: 10px;
+        }
+    </style>
+
+    <h2>📝 Consultation des Notes</h2>
+
+    <div class="matricule-form-container">
+        <form method="GET" action="{% url 'notes_list' %}" style="margin-bottom: 0;">
+            <label for="matricule_input">
+                <strong>Veuillez saisir votre Matricule pour voir vos notes :</strong>
+            </label>
+            <div style="display: flex; margin-top: 10px;">
+                <input type="text" id="matricule_input" name="matricule" 
+                       placeholder="Votre Matricule (Ex: ETD001)" 
+                       class="matricule-input" 
+                       value="{{ request.GET.matricule|default:'' }}" required>
+
+                <input type="text" name="matricule_confirm" 
+                       placeholder="Confirmez votre Matricule" 
+                       class="matricule-input" 
+                       value="{{ request.GET.matricule_confirm|default:'' }}" style="width: 25%;">
+
+                <button type="submit" class="btn btn-primary" 
+                        style="background-color: #008CBA; border: none; flex-shrink: 0;">
+                    Afficher les Notes
+                </button>
+            </div>
+            {% if error_message %}
+            <p style="color: red; margin-top: 10px;">{{ error_message }}</p>
+            {% endif %}
+        </form>
+    </div>
+
+    <div id="ajax-message-container" class="mb-3"></div>
+    
+    
+    <button type="button" class="btn-add" 
+        data-bs-toggle="modal" 
+        data-bs-target="#addItemModal" 
+        id="add-note-btn"
+        data-form-url="{% url 'note_create' %}"
+        data-model-name="Note">
+        + Ajouter une Note
+    </button>
+   
+    
+    <hr>
+    
+    {% if notes %}
+    <h3>Notes de l'étudiant {% if etudiant_concerne %}{{ etudiant_concerne.user.last_name }} {{ etudiant_concerne.user.first_name }}{% endif %}</h3>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID Note</th>
+                <th>Matière</th>
+                <th>Type</th>
+                <th>Note (Valeur)</th>
+                <th>Coefficient</th>
+                <th>Actions (Admin)</th>
+            </tr>
+        </thead>
+        <tbody id="item-table-body">
+            {% for note in note %}
+            <tr id="item-{{ note.pk }}"> 
+                <td>{{ note.id_note }}</td>
+                <td>{{ note.matiere.nom_matiere }}</td> 
+                <td>{{ note.get_type_note_display }}</td> 
+                <td>{{ note.valeur_note|default:"N/A" }}</td>
+                <td>{{ note.coef|default:1 }}</td>
+                
+                <td style="min-width: 150px;">
+                    <a href="{% url 'note_update' note.pk %}" class="btn btn-edit">Modifier</a> 
+                    <a href="{% url 'note_delete' note.pk %}" class="btn btn-delete">Supprimer</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% else %}
+    <p style="text-align: center; padding: 20px; background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px;">
+        Veuillez saisir votre matricule  vos notes.
+        {% if request.GET.matricule and not error_message %}
+            <br>Aucune note trouvée pour le matricule {{ request.GET.matricule }}.
+        {% endif %}
+    </p>
+    {% endif %}
+
+
+    <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addItemModalLabel">Ajouter une Nouvelle Note</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body" id="item-form-modal-body">
+                    <p class="text-center">Veuillez patienter, chargement du formulaire...</p>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+
+{% endblock content %}
+
+{% block extra_js %}
+     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Références DOM standardisées
+            const modal = document.getElementById('addItemModal');
+            const modalBody = document.getElementById('item-form-modal-body');
+            const messageContainer = document.getElementById('ajax-message-container');
+            const tableBody = document.getElementById('item-table-body');
+            const addButton = document.getElementById('add-note-btn'); 
+
+            // Vérifier si le bouton d'ajout existe (il est peut-être commenté dans le HTML)
+            if (!addButton) return; 
+
+            // Configuration spécifique
+            const modelName = addButton.dataset.modelName || 'Note'; 
+            const createUrl = addButton.dataset.formUrl;
+            const modelPrefix = 'note'; 
+            
+            // Met à jour le titre de la modale
+            const modalTitleSpan = document.getElementById('addItemModalLabel');
+            if (modalTitleSpan) modalTitleSpan.textContent = 'Ajouter une ' + modelName;
+
+
+            // 1. GESTION DU CHARGEMENT DU FORMULAIRE
+            modal.addEventListener('show.bs.modal', function () {
+                modalBody.innerHTML = `<p class="text-center">Veuillez patienter, chargement du formulaire...</p>`;
+                messageContainer.innerHTML = ''; 
+
+                fetch(createUrl)
+                    .then(response => response.text())
+                    .then(html => {
+                        modalBody.innerHTML = html;
+                        const form = modalBody.querySelector('form');
+                        if (form) {
+                            attachAjaxSubmitHandler(form);
+                        }
+                    })
+                    .catch(error => {
+                        modalBody.innerHTML = `<p class="alert alert-danger">Erreur: Impossible de charger le formulaire.</p>`;
+                        console.error('Erreur de chargement du formulaire:', error);
+                    });
+            });
+
+            // 2. GESTION DE LA SOUMISSION DU FORMULAIRE (via AJAX)
+            function attachAjaxSubmitHandler(form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault(); 
+                    
+                    const formData = new FormData(form);
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    if (submitButton) submitButton.disabled = true;
+
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest', 
+                        }
+                    })
+                    .then(response => {
+                        // 🛑 Gestion critique des statuts HTTP (200 OK vs 400 Bad Request)
+                        if (response.ok) {
+                            return response.json(); // Succès attendu: JSON
+                        } else {
+                            // Échec: La vue a renvoyé le formulaire HTML (statut 400)
+                            return response.text().then(html => {
+                                throw { status: response.status, html: html }; 
+                            });
+                        }
+                    })
+                    .then(result => {
+                        // BLOC DE SUCCÈS: Ajout de la nouvelle ligne
+                        if (result.success) {
+                            // ⚠️ Assurez-vous que les clés correspondent aux données JSON de la vue Django
+                            const newRow = `
+                               // DANS notes_list.html, BLOC DE SUCCÈS (~Ligne 160)
+// ...
+<tr id="item-${result.pk}">
+    <td>${result.id_note}</td>
+    <td>${result.nom_matiere}</td> 
+    <td>${result.type_note_display}</td> 
+    <td>${result.valeur_note}</td>
+    <td>${result.coef}</td>
+    <td style="min-width: 150px;">
+        <a href="${result.update_url}" class="btn btn-edit">Modifier</a> 
+        <a href="${result.delete_url}" class="btn btn-delete">Supprimer</a>
+    </td>
+</tr>
+// ...
+                            `;
+                            
+                            // Supprimer la ligne "Aucune trouvée" si elle existe
+                            const noItemRow = document.getElementById('no-item-row');
+                            if (noItemRow) {
+                                noItemRow.remove();
+                            }
+                            
+                            // Ajout de la nouvelle ligne en haut
+                            tableBody.insertAdjacentHTML('afterbegin', newRow);
+                            
+                            // Afficher le message de succès et fermer la modale
+                            messageContainer.innerHTML = `<div class="alert-success">${modelName} pour ${result.etudiant_nom_complet} ajoutée avec succès!</div>`;
+                            
+                            // Utilisation de Bootstrap 5 pour fermer la modale
+                            const bsModal = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
+                            bsModal.hide();
+                            
+                        } else {
+                            alert("Erreur JSON inattendue: " + result.message || "Erreur inconnue.");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur AJAX:', error);
+                        
+                        // Si c'est un échec de validation (statut 400 et contenu HTML)
+                        if (error.status === 400 && error.html) {
+                            modalBody.innerHTML = error.html; // Afficher le formulaire avec les erreurs
+                            
+                            // Réattacher le gestionnaire de soumission
+                            const updatedForm = modalBody.querySelector('form');
+                            if(updatedForm) {
+                                attachAjaxSubmitHandler(updatedForm);
+                            }
+                        } else {
+                            // Erreur réseau ou autre erreur inattendue
+                            alert('Une erreur critique est survenue. Vérifiez la console.');
+                        }
+                    })
+                    .finally(() => {
+                        // Réactive le bouton
+                        const submitButton = form.querySelector('button[type="submit"]');
+                        if (submitButton) submitButton.disabled = false;
+                    });
+                });
+            }
+        });
+    </script>
+{% endblock extra_js %}

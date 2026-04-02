@@ -1,0 +1,254 @@
+{% extends "baseetud.html" %}
+{% load static %}
+
+{% block title %}Liste des Options{% endblock %}
+
+{% block content %}
+    <style>
+        /* Styles CSS (laissé tel quel) */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:hover {background-color: #f5f5f5;}
+        .btn {
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            color: white;
+            margin-right: 5px;
+        }
+        .btn-edit { background-color: #4CAF50; }
+        .btn-delete { background-color: #f44336; }
+        .btn-add { 
+            display: inline-block; 
+            background-color: #008CBA; 
+            color: white; 
+            padding: 10px 20px; 
+            text-decoration: none; 
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        /* Style pour le message de succès */
+        .alert-success {
+            padding: 10px;
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .matricule-form-container {
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .matricule-input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 70%;
+            margin-right: 10px;
+        }
+    </style>
+    
+    <h2>📜 Liste des Options</h2>
+    <div class="matricule-form-container">
+    <form method="GET" action="{% url 'semestre_list' %}" style="margin-bottom: 20px;">
+        <input type="text" name="q" placeholder="Rechercher code ou nom..." value="{{ request.GET.q }}" class="matricule-input">
+        <button type="submit">Rechercher</button>
+    </form>
+    </div>
+    <div id="ajax-message-container" class="mb-3"></div>
+
+    <button type="button" class="btn-add" 
+        data-bs-toggle="modal" 
+        data-bs-target="#addItemModal" 
+        id="add-semestre-btn"
+        data-form-url="{% url 'semestre_create' %}"
+        data-model-name="Option">
+        + Ajouter une Option
+    </button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Code Option</th>
+                <th>Nom Option</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="item-table-body"> 
+            {% for semestre in semestres %}
+            <tr id="item-{{ semestre.pk }}"> 
+                <td>{{ semestre.code_option }}</td>
+                <td>{{ semestre.nom_option }}</td>
+                <td>
+                    <a href="{% url 'semestre_update' semestre.pk %}" class="btn btn-edit">Modifier</a>
+                    <a href="{% url 'semestre_delete' semestre.pk %}" class="btn btn-delete">Supprimer</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr id="no-item-row"> 
+                <td colspan="3" style="text-align:center;">Aucune Options  trouvé.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addItemModalLabel">Ajouter une <span id="modal-model-name"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body" id="item-form-modal-body">
+                    <p class="text-center">Veuillez patienter, chargement du formulaire...</p>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}
+
+{% block extra_js %}
+    <script>
+        // Assurez-vous que Bootstrap est chargé pour que 'bootstrap.Modal' fonctionne
+        document.addEventListener('DOMContentLoaded', function() {
+            // Variables DOM génériques
+            const modal = document.getElementById('addItemModal'); 
+            const modalBody = document.getElementById('item-form-modal-body'); 
+            const messageContainer = document.getElementById('ajax-message-container'); 
+            const tableBody = document.getElementById('item-table-body'); 
+            const addButton = document.getElementById('add-semestre-btn'); 
+
+            // Variables de configuration spécifiques au modèle Semestre
+            const modelName = addButton.dataset.modelName; 
+            const createUrl = addButton.dataset.formUrl;   
+            const modelPrefix = 'semestre'; 
+
+            // Met à jour le titre de la modale
+            const modalTitleSpan = document.getElementById('modal-model-name');
+            if (modalTitleSpan) modalTitleSpan.textContent = modelName;
+            
+            // 1. GESTION DU CHARGEMENT DU FORMULAIRE
+            modal.addEventListener('show.bs.modal', function () {
+                modalBody.innerHTML = `<p class="text-center">Veuillez patienter, chargement du formulaire...</p>`;
+                messageContainer.innerHTML = ''; 
+
+                fetch(createUrl)
+                    .then(response => response.text())
+                    .then(html => {
+                        modalBody.innerHTML = html;
+                        const form = modalBody.querySelector('form');
+                        if (form) {
+                            attachAjaxSubmitHandler(form);
+                        }
+                    })
+                    .catch(error => {
+                        modalBody.innerHTML = `<p class="alert alert-danger">Erreur: Impossible de charger le formulaire.</p>`;
+                        console.error('Erreur de chargement du formulaire:', error);
+                    });
+            });
+
+            // 2. GESTION DE LA SOUMISSION DU FORMULAIRE (via AJAX)
+            function attachAjaxSubmitHandler(form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault(); 
+                    
+                    const formData = new FormData(form);
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    if (submitButton) submitButton.disabled = true;
+
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest', 
+                        }
+                    })
+                    .then(response => {
+                        // 🛑 Vérification CRITIQUE du statut HTTP
+                        if (response.ok) {
+                            return response.json(); // Succès (Statut 200)
+                        } else {
+                            // Échec (Statut 400 ou autre): Lire le HTML d'erreur
+                            return response.text().then(html => {
+                                // Lancer une erreur pour passer au bloc .catch
+                                throw { status: response.status, html: html }; 
+                            });
+                        }
+                    })
+                    .then(result => {
+                        // BLOC DE SUCCÈS: Ajout de la nouvelle ligne
+                        if (result.success) {
+                            const newRow = `
+                                <tr id="item-${result.pk}">
+                                    <td>${result.code_option}</td>
+                                    <td>${result.nom_option}</td>
+                                    <td style="min-width: 200px;">
+                                        <a href="/${modelPrefix}s/${result.pk}/update/" class="btn btn-edit">Modifier</a>
+                                        <a href="/${modelPrefix}s/${result.pk}/delete/" class="btn btn-delete">Supprimer</a>
+                                    </td>
+                                </tr>
+                            `;
+                            
+                            // Supprimer la ligne "Aucun trouvé" si elle existe
+                            const noItemRow = document.getElementById('no-item-row');
+                            if (noItemRow) {
+                                noItemRow.remove();
+                            }
+                            
+                            tableBody.insertAdjacentHTML('afterbegin', newRow); 
+                            
+                            // Afficher le message de succès et fermer la modale
+                            messageContainer.innerHTML = `<div class="alert-success">${modelName} ${result.nom_option} ajouté(e) avec succès!</div>`;
+                            const bsModal = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
+                            bsModal.hide();
+                            
+                        } else {
+                            // Erreur JSON inattendue
+                            alert("Erreur: " + result.message || "Erreur inconnue.");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur AJAX:', error);
+                        
+                        // Si c'est un échec de validation (statut 400 et contenu HTML)
+                        if (error.status === 400 && error.html) {
+                            modalBody.innerHTML = error.html; // Afficher le formulaire avec les erreurs
+                            
+                            // Réattacher le gestionnaire de soumission
+                            const updatedForm = modalBody.querySelector('form');
+                            if(updatedForm) {
+                                attachAjaxSubmitHandler(updatedForm);
+                            }
+                        } else {
+                            // Erreur réseau ou autre erreur inattendue
+                            alert('Une erreur critique est survenue. Vérifiez la console.');
+                        }
+                    })
+                    .finally(() => {
+                        // Réactive le bouton
+                        if (submitButton) submitButton.disabled = false;
+                    });
+                });
+            }
+        });
+    </script>
+{% endblock extra_js %}

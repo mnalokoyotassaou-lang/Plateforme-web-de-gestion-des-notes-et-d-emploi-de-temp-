@@ -1,0 +1,15 @@
+<h2>
+    {% if form.instance.pk %}
+        ✏️ Modifier la Matière : {{ form.instance.nom_matiere }}
+    {% else %}
+        ➕ Ajouter une nouvelle Matière
+    {% endif %}
+</h2>
+
+<form method="post" action="{% url 'matiere_create' %}">
+    {% csrf_token %}
+    {{ form.as_p }} 
+    <button type="submit">Sauvegarder</button>
+</form>
+
+<p><a href="{% url 'matiere_list' %}">Retour à la liste des matières</a></p>

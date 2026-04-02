@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Emplois du Temps{% endblock %}
+
+{% block content %}
+
+    <style>
+        /* Style standardisé pour la cohérence */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        tr:hover { background-color: #f5f5f5; }
+        .btn { text-decoration: none; padding: 5px 10px; border-radius: 4px; color: white; margin-right: 5px; font-size: 0.9em;}
+        .btn-edit { background-color: #4CAF50; }
+        .btn-delete { background-color: #f44336; }
+        .btn-add { 
+            display: inline-block; background-color: #008CBA; color: white; 
+            padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-bottom: 15px;
+            cursor: pointer; /* Ajout du curseur pour uniformité */
+        }
+        /* Style pour les messages */
+        .alert-success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; padding: .75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: .25rem; }
+      .matricule-form-container {
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+    </style>
+
+    <h2>🗓️ Emplois du Temps</h2>
+     <div class="matricule-form-container">
+    <form method="GET" action="{% url 'emploi_list' %}" style="margin-bottom: 20px;">
+        <input type="text" name="q" placeholder="Rechercher par  option" value="{{ request.GET.q }}" style="padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 70%;
+            margin-right: 10px;">
+        <button type="submit" style="background-color: #008CBA;">Rechercher</button>
+    </form>
+    </div>
+    <div id="ajax-message-container" class="mb-3"></div>
+    <button type="button" class="btn-add" 
+        data-bs-toggle="modal" 
+        data-bs-target="#addItemModal" 
+        id="add-emploi-btn"
+        data-form-url="{% url 'emploi_create' %}"
+        data-model-name="Créneau d'Emploi du Temps">
+        + Ajouter une seance 
+    </button> 
+
+    <table id="emploi-table"> 
+        <thead>
+            <tr>
+                <th>Id Séance</th>
+                <th>Jour (Nom)</th>
+                <th>Date</th>
+                <th>Heure Début/Fin</th>
+                <th>Matière</th>
+                <th>Professeur</th>
+                <th>Classe</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="item-table-body">
+            {% for emploi in emplois %}
+            <tr id="item-{{ emploi.pk }}"> 
+                <td>{{ emploi.id_seance }}</td>
+                
+                <td>{{ emploi.jour_nom }}</td> 
+                
+                <td>{{ emploi.date_seance|date:"d/m/Y" }}</td>
+                
+                <td>
+                    {{ emploi.heure_debut|time:"H:i" }} - {{ emploi.heure_fin|time:"H:i" }}
+                </td>
+
+                <td>{{ emploi.matiere.nom_matiere }}</td>
+                
+                <td>
+                    {{ emploi.professeur.user.first_name }} {{ emploi.professeur.user.last_name }}
+                </td>
+                
+                <td>{{ emploi.option_classe.nom_option }}</td> 
+                
+                <td style="min-width: 200px;">
+                    <a href="{% url 'emploi_update' emploi.pk %}" class="btn btn-edit">Modifier</a> 
+                    <a href="{% url 'emploi_delete' emploi.pk %}" class="btn btn-delete">Supprimer</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr id="no-item-row">
+                <td colspan="8" style="text-align:center;">Aucun seance d'emploi du temps trouvé.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addItemModalLabel"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body" id="item-form-modal-body">
+                    <p class="text-center">Veuillez patienter, chargement du formulaire...</p>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+
+{% endblock content %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Références DOM standardisées
+            const modal = document.getElementById('addItemModal');
+            const modalBody = document.getElementById('item-form-modal-body');
+            const messageContainer = document.getElementById('ajax-message-container');
+            const tableBody = document.getElementById('item-table-body');
+            const addButton = document.getElementById('add-emploi-btn'); 
+
+            // Configuration spécifique
+            const modelName = addButton.dataset.modelName || 'Créneau'; 
+            const createUrl = addButton.dataset.formUrl;
+            const modelPrefix = 'emploi'; // Utilisé pour construire les URLs
+            
+            // Met à jour le titre de la modale
+            const modalTitleSpan = document.getElementById('addItemModalLabel');
+            if (modalTitleSpan) modalTitleSpan.textContent = 'Ajouter un ' + modelName;
+
+
+            // 1. GESTION DU CHARGEMENT DU FORMULAIRE
+            modal.addEventListener('show.bs.modal', function () {
+                modalBody.innerHTML = `<p class="text-center">Veuillez patienter, chargement du formulaire...</p>`;
+                messageContainer.innerHTML = ''; 
+
+                fetch(createUrl)
+                    .then(response => response.text())
+                    .then(html => {
+                        modalBody.innerHTML = html;
+                        const form = modalBody.querySelector('form');
+                        if (form) {
+                            attachAjaxSubmitHandler(form);
+                        }
+                    })
+                    .catch(error => {
+                        modalBody.innerHTML = `<p class="alert alert-danger">Erreur: Impossible de charger le formulaire.</p>`;
+                        console.error('Erreur de chargement du formulaire:', error);
+                    });
+            });
+
+            // 2. GESTION DE LA SOUMISSION DU FORMULAIRE (via AJAX)
+            function attachAjaxSubmitHandler(form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault(); 
+                    
+                    const formData = new FormData(form);
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    if (submitButton) submitButton.disabled = true;
+
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest', 
+                        }
+                    })
+                    .then(response => {
+                        // 🛑 Gestion critique des statuts HTTP (200 OK vs 400 Bad Request)
+                        if (response.ok) {
+                            return response.json(); // Succès attendu: JSON
+                        } else {
+                            // Échec: La vue a renvoyé le formulaire HTML (statut 400)
+                            return response.text().then(html => {
+                                throw { status: response.status, html: html }; 
+                            });
+                        }
+                    })
+                    .then(result => {
+                        // BLOC DE SUCCÈS: Ajout de la nouvelle ligne
+                        if (result.success) {
+                            // ⚠️ Assurez-vous que les clés correspondent exactement à ce que la vue Django renvoie
+                            const newRow = `
+                                <tr id="item-${result.pk}">
+                                    <td>${result.id_seance}</td>
+                                    <td>${result.jour_nom}</td>
+                                    <td>${result.date_seance}</td> 
+                                    <td>${result.heure_debut} - ${result.heure_fin}</td>
+                                    <td>${result.nom_matiere}</td>
+                                    <td>${result.professeur_nom}</td>
+                                    <td>${result.option_classe.nom_option}</td>
+                                    <td style="min-width: 150px;">
+                                        <a href="/${modelPrefix}s/${result.pk}/update/" class="btn btn-edit">Modifier</a>
+                                        <a href="/${modelPrefix}s/${result.pk}/delete/" class="btn btn-delete">Supprimer</a>
+                                    </td>
+                                </tr>
+                            `;
+                            
+                            // Supprimer la ligne "Aucune trouvée" si elle existe
+                            const noItemRow = document.getElementById('no-item-row');
+                            if (noItemRow) {
+                                noItemRow.remove();
+                            }
+                            
+                            // Ajout de la nouvelle ligne en haut
+                            tableBody.insertAdjacentHTML('afterbegin', newRow);
+                            
+                            // Afficher le message de succès et fermer la modale
+                            messageContainer.innerHTML = `<div class="alert-success">${modelName} (Séance ${result.id_seance}) ajouté(e) avec succès!</div>`;
+                            const bsModal = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
+                            bsModal.hide();
+                            
+                        } else {
+                            alert("Erreur JSON inattendue: " + result.message || "Erreur inconnue.");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur AJAX:', error);
+                        
+                        // Si c'est un échec de validation (statut 400 et contenu HTML)
+                        if (error.status === 400 && error.html) {
+                            modalBody.innerHTML = error.html; // Afficher le formulaire avec les erreurs
+                            
+                            // Réattacher le gestionnaire de soumission
+                            const updatedForm = modalBody.querySelector('form');
+                            if(updatedForm) {
+                                attachAjaxSubmitHandler(updatedForm);
+                            }
+                        } else {
+                            // Erreur réseau ou autre erreur inattendue
+                            alert('Une erreur critique est survenue. Vérifiez la console.');
+                        }
+                    })
+                    .finally(() => {
+                        // Réactive le bouton
+                        const submitButton = form.querySelector('button[type="submit"]');
+                        if (submitButton) submitButton.disabled = false;
+                    });
+                });
+            }
+        });
+    </script>
+{% endblock extra_js %}

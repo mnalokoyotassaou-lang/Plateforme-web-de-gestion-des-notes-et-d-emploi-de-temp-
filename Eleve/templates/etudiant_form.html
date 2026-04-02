@@ -1,0 +1,15 @@
+<h2>
+    {% if form.instance.pk %}
+        Modifier l'Étudiant : {{ form.instance.prenom }} {{ form.instance.nom }}
+    {% else %}
+        Ajouter un nouveau Étudiant
+    {% endif %}
+</h2>
+
+<form method="post"  action="{% url 'etudiant_create' %}">
+    {% csrf_token %}
+    {{ form.as_p }} 
+    <button type="submit">Sauvegarder</button>
+</form>
+
+<p><a href="{% url 'etudiant_list' %}">Retour </a></p>

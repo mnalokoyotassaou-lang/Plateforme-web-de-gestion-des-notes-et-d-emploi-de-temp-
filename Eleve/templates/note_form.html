@@ -1,0 +1,16 @@
+<h2>📝 Saisir ou Modifier une Note</h2>
+
+<form method="post" action="{% url 'note_create' %}" >
+    {% csrf_token %}
+    
+    {{ form.as_p }} 
+    
+    <p style="font-style: italic;">
+        Sélectionnez l'étudiant et la matière, puis entrez les notes. <br>
+        **Rappel :** Chaque étudiant ne peut avoir qu'un seul enregistrement de note par matière.
+    </p>
+
+    <button type="submit">Sauvegarder les Notes</button>
+</form>
+
+<p><a href="{% url 'etudiant_list' %}">Annuler et Retour à la liste des étudiants</a></p>

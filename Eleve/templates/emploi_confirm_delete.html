@@ -1,0 +1,13 @@
+<h2>🗑️ Confirmation de Suppression</h2>
+
+<p>Êtes-vous sûr de vouloir supprimer ce créneau d'emploi du temps ?</p>
+<p>
+    <strong>Créneau :</strong> {{ object.Date|date:"d/m/Y" }} de {{ object.heurdebut|time:"H:i" }} à {{ object.heurfin|time:"H:i" }} pour la matière **{{ object.nom_matiere }}** ({{ object.get_option_display }}).
+</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" style="background-color: red; color: white; padding: 10px;">Confirmer la suppression</button>
+    <a href="{% url 'emploi_list' %}" style="margin-left: 20px;">Annuler</a>
+</form>
+

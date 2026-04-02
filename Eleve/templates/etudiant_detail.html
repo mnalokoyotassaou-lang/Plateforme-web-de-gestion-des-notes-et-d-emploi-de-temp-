@@ -1,0 +1,53 @@
+{% load static %}
+<style>
+    .detail-card {
+        border: 1px solid #ccc;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 600px;
+        margin: 20px auto;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    }
+    .detail-card h2 {
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+    .action-links a {
+        margin-right: 15px;
+        text-decoration: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        display: inline-block;
+    }
+    .action-links .edit { background-color: #ffc107; color: #333; }
+    .action-links .delete { background-color: #dc3545; color: white; }
+    .action-links .bulletin { background-color: #007bff; color: white; }
+</style>
+
+<div class="detail-card">
+    <h2>Détails de l'Étudiant</h2>
+    
+    <h3>{{ etudiant.prenom }} **{{ etudiant.nom }}**</h3>
+    
+    <p>
+        <strong>Email :</strong> {{ etudiant.email }}<br>
+        <strong>Département :</strong> {{ etudiant.get_departement_display }}<br>
+        <strong>Option/Filière :</strong> {{ etudiant.get_option_display }}<br>
+        <strong>ID Interne (PK) :</strong> {{ etudiant.pk }}
+    </p>
+
+    <hr>
+    
+    <h4>Actions Rapides :</h4>
+    <div class="action-links">
+        <a href="{% url 'etudiant_update' etudiant.pk %}" class="edit">✏️ Modifier</a>
+        
+        <a href="{% url 'bulletin_de_notes' etudiant.pk %}" class="bulletin">📊 Voir le Bulletin de Notes</a>
+        
+        <a href="{% url 'etudiant_delete' etudiant.pk %}" class="delete">🗑️ Supprimer</a>
+    </div>
+
+    <hr>
+
+    <p><a href="{% url 'etudiant

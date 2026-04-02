@@ -1,0 +1,15 @@
+<h2>
+    {% if form.instance.pk %}
+        ✏️ Modifier l'UE : {{ form.instance.nom }}
+    {% else %}
+        ➕ Ajouter une nouvelle Unité d'Enseignement (UE)
+    {% endif %}
+</h2>
+
+<form method="post" action="{% url 'ue_create' %}">
+    {% csrf_token %}
+    {{ form.as_p }} 
+    <button type="submit">Sauvegarder</button>
+</form>
+
+<p><a href="{% url 'ue_list' %}">Retour à la liste des UE</a></p>

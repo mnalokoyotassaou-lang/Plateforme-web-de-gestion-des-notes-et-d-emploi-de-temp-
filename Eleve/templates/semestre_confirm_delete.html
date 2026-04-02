@@ -1,0 +1,12 @@
+<h2>🗑️ Confirmation de Suppression</h2>
+
+<p>Êtes-vous sûr de vouloir supprimer le semestre suivant : <strong>{{ object.nom_semestre }} ({{ object.code_semestre }})</strong> ?</p>
+<p>
+    **ATTENTION :** La suppression de ce semestre entraînera la suppression de toutes les **matières** (et donc potentiellement des **notes**, **UE** et **emplois du temps**) qui lui sont associées, à cause de l'option `on_delete=models.CASCADE` dans votre modèle `Matiere`.
+</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" style="background-color: red; color: white; padding: 10px;">Confirmer la suppression</button>
+    <a href="{% url 'semestre_list' %}" style="margin-left: 20px;">Annuler</a>
+</form>

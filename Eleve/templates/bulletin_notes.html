@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Bulletin de Notes de l'Étudiant{% endblock %}
+
+{% block content %}
+
+    <style>
+        /* Styles pour le bulletin de notes */
+        .bulletin-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+        .note-pass { color: green; font-weight: bold; }
+        .note-fail { color: red; font-weight: bold; }
+        .moyenne-g { background-color: #e6f7ff; padding: 15px; border-radius: 4px; border-left: 5px solid #007bff; }
+    </style>
+
+    <div class="bulletin-container">
+        
+        <h2>
+            📝 Bulletin de Notes de 
+            <span style="color: #007bff;">
+                {{ etudiant.user.first_name }} {{ etudiant.user.last_name }}
+            </span>
+        </h2>
+        <p><strong>Matricule :</strong> {{ etudiant.matricule }}</p>
+        <hr>
+
+        {% if message %}
+            <p style="font-size: 1.1em; color: red;">{{ message }}</p>
+        {% else %}
+            
+            {% for semestre_code, semestre_data in data_ue.items %}
+                <h3 style="border-bottom: 2px solid #ccc; padding-bottom: 5px;">
+                    Semestre : {{ semestre_data.nom }} ({{ semestre_code }})
+                </h3>
+                
+                {% for cod_ue, ue_data in semestre_data.ues.items %}
+                    <h4 style="color: #333;">UE : {{ ue_data.nom }} ({{ cod_ue }})</h4>
+                    
+                    <table>
+                        <thead>
+                            <tr><th>Matière</th><th>Note Finale</th><th>Coef</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for matiere in ue_data.matieres %}
+                            <tr>
+                                <td>{{ matiere.nom }}</td> 
+                                <td>{{ matiere.note_finale }} / 20</td>
+                                <td>{{ matiere.coef }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    
+                    <p style="background-color: #fffacd; padding: 10px; border-radius: 4px;">
+                        <strong>Somme (Note Matière * Coef) :</strong> {{ ue_data.somme_produit_note_coef|floatformat:2 }} <br>
+                        <strong>Somme des Coefs :</strong> {{ ue_data.somme_coef|floatformat:2 }} <br>
+                        <strong>Note UE (Moyenne) :</strong> 
+                        {% if ue_data.note_ue is not None %}
+                            <span class="{% if ue_data.note_ue >= 10 %}note-pass{% else %}note-fail{% endif %}">
+                                {{ ue_data.note_ue|floatformat:2 }} / 20
+                            </span>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </p>
+                    <hr>
+                {% endfor %}
+            {% endfor %}
+
+            <div class="moyenne-g">
+                <h3>Moyenne Générale</h3>
+                <p>
+                    **Calcul :** (Somme des (Note UE * Somme Coefs UE)) / Somme Totale des Coefs <br>
+                    **Résultat :** ({{ total_general_produit_coef|floatformat:2 }}) / ({{ somme_total_coef|floatformat:2 }}) = 
+                    <span style="font-size: 1.5em;" class="{% if moyenne_generale >= 10 %}note-pass{% else %}note-fail{% endif %}">
+                        {{ moyenne_generale|floatformat:2 }} / 20
+                    </span>
+                </p>
+            </div>
+
+        {% endif %}
+    </div>
+{% endblock content %}
